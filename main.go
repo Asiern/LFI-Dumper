@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 )
 
 // Variables
@@ -22,7 +23,8 @@ func init() {
 		log.Fatalf("Got error while creating cookie jar %s", err.Error())
 	}
 	client = http.Client{
-		Jar: jar,
+		Jar:     jar,
+		Timeout: 5 * time.Second,
 	}
 }
 
@@ -48,7 +50,7 @@ func print_AsciiArt() {
 func getFile(endpoint string, file string, outputpath string) {
 
 	// Generate url by joining endpoint & file
-	url := endpoint + file //:= joinUrl(endpoint, file)
+	url := endpoint + file
 	fmt.Println(url)
 
 	// Request cookies
@@ -77,6 +79,10 @@ func getFile(endpoint string, file string, outputpath string) {
 
 	// Get local file contents from response body
 	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	content := string(body)
 	pos := strings.Index(content, "<!DOCTYPE")
 	if pos == -1 {
@@ -123,7 +129,7 @@ func main() {
 				endpoint = os.Args[i+2]
 			case "o": // Output directory
 				outdir = os.Args[i+2]
-			case "d":
+			case "d": // Dictionary
 				dictionaryPath = os.Args[i+2]
 			case "h": // Help menu
 				print_AsciiArt()
@@ -146,7 +152,7 @@ func main() {
 	print_AsciiArt()
 
 	if endpoint == "" {
-		fmt.Println("No target url specified. Specify target './lfidumper -u http://target/.git -d dictionary.txt'")
+		fmt.Println("No target url specified. Specify target './lfidumper -u http://target/page='")
 		os.Exit(-1)
 	}
 	if dictionaryPath == "" {
