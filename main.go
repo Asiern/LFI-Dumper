@@ -137,7 +137,7 @@ func main() {
 				fmt.Println("Usage: ./lfidumper -e 'http://target.com/page=' -d dictionary.txt")
 				fmt.Println()
 				fmt.Println("Options:")
-				fmt.Println("\t -e : Endpoint url. -u 'http://target.com/page='")
+				fmt.Println("\t -e : Endpoint url. -e 'http://target.com/page='")
 				fmt.Println("\t -o : Output directory. -o output.\n\t      If not specified the output directory will be './out'.")
 				fmt.Println("\t -d : Dictionary")
 				fmt.Println("\t -h : Show this menu")
@@ -152,7 +152,7 @@ func main() {
 	print_AsciiArt()
 
 	if endpoint == "" {
-		fmt.Println("No target url specified. Specify target './lfidumper -u http://target/page='")
+		fmt.Println("No target url specified. Specify target './lfidumper -e http://target/page='")
 		os.Exit(-1)
 	}
 	if dictionaryPath == "" {
