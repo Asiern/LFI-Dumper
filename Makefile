@@ -1,9 +1,15 @@
 PROJECT_NAME := lfidumper
 
+ifeq ($(OS),Windows_NT)
+	BINARY := ${PROJECT_NAME}.exe
+else
+	BINARY := ${PROJECT_NAME}
+endif
+
 all: build #test
 
 build:
-	go build -o ${PROJECT_NAME}.exe main.go
+	go build -o ${BINARY} main.go
 
 test:
 	go test -v main.go
