@@ -1,4 +1,5 @@
 PROJECT_NAME := lfidumper
+FLAGS := -ldflags "-w -s"
 
 ifeq ($(OS),Windows_NT)
 	BINARY := ${PROJECT_NAME}.exe
@@ -9,7 +10,7 @@ endif
 all: build #test
 
 build:
-	go build -o ${BINARY} main.go
+	go build ${FLAGS} -o ${BINARY} main.go 
 
 test:
 	go test -v main.go
