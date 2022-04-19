@@ -50,7 +50,7 @@ func print_AsciiArt() {
 
 }
 
-func getFile(endpoint string, file string, outputpath string) {
+func getFile(endpoint string, file string, outputpath string, filterstring string) {
 
 	// Generate url by joining endpoint & file
 	url := endpoint + file
@@ -77,11 +77,16 @@ func getFile(endpoint string, file string, outputpath string) {
 
 	// Get Local file from request body
 	content := string(body)
-	pos := strings.Index(content, "<!DOCTYPE")
-	if pos == -1 {
-		return
+
+	// Filter content by string
+	if filterstring != "" {
+		pos := strings.Index(content, filterstring)
+		if pos != -1 {
+			content = content[:pos]
+		}
 	}
-	content = content[:pos]
+
+	// TODO fix this
 	if len(content) < 5 {
 		return
 	}
@@ -128,7 +133,7 @@ func getLineCount(path string) int {
 
 func main() {
 
-	var endpoint, outdir, dictionaryPath, login, payload string
+	var endpoint, outdir, dictionaryPath, login, payload, filter string
 	// Parse arguments
 	for i, arg := range os.Args[1:] {
 		if string(arg[0]) == "-" {
@@ -143,6 +148,8 @@ func main() {
 				login = os.Args[i+2]
 			case "p": // Payload
 				payload = os.Args[i+2]
+			case "f": // Content filter
+				filter = os.Args[i+2]
 			case "h": // Help menu
 				print_AsciiArt()
 				fmt.Println()
@@ -154,6 +161,7 @@ func main() {
 				fmt.Println("\t -l : Login url. -l 'http://target/login' ")
 				fmt.Println("\t -p : Login POST payload. -p 'username=admin&password=admin&Login=Login'")
 				fmt.Println("\t -d : Dictionary")
+				fmt.Println("\t -f : Filter response body. Get response until string first appearance.")
 				fmt.Println("\t -h : Show this menu")
 				fmt.Println()
 				os.Exit(1)
@@ -218,7 +226,7 @@ func main() {
 		line = clean_dictionary_entry(line[:len(line)-1])
 
 		// Get file contents
-		getFile(endpoint, line, outdir)
+		getFile(endpoint, line, outdir, filter)
 		bar.Advance(1)
 	}
 }
