@@ -15,8 +15,8 @@ build:
 test:
 	go test -v main.go
 
-run:${PROJECT_NAME}
-	./${PROJECT_NAME}
+run:${BINARY}
+	./${BINARY}
 
 clean:
 	go clean
