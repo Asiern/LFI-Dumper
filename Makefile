@@ -20,6 +20,6 @@ run:${BINARY}
 
 clean:
 	go clean
-	rm ${PROJECT_NAME}
+	rm ${BINARY}
 
 .PHONY: build run clean test
